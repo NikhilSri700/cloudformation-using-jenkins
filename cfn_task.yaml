@@ -1,0 +1,132 @@
+---
+
+Parameters:  
+  VpcCIDR:
+    Description: IPv4 CIDR for VPC
+    Type: String
+    Default: 113.212.0.0/16
+  
+  PublicSubnetCIDR:
+    Description: IPv4 CIDR for Public Subnet
+    Type: String
+    Default: 113.212.0.0/20
+
+  PrivateSubnetCIDR:
+    Description: IPv4 CIDR for Private Subnet
+    Type: String
+    Default: 113.212.16.0/20
+
+  EC2InstanceType:
+    Description: Select the EC2 instance type.
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small  
+  
+  BucketName:
+    Description: S3 Bucket Name
+    Type: String
+    Default: s3-bucket-task-wgc-ir
+
+  EmailForEventRule: 
+    Default: "thisisfordevelopment700@gmail.com"
+    Description: "Email address for notifications from cloudwatch EventBridge"
+    Type: "String"
+
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      Tags:
+        - Key: Name
+          Value: Test VPC
+  
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public Subnet
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private Subnet
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      AvailabilityZone: !Select [0, !GetAZs '']
+      ImageId: ami-0756a1c858554433e
+      InstanceType: !Ref EC2InstanceType
+      Tags:
+        - Key: Name
+          Value: cfn-instance
+  
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      LifecycleConfiguration:
+        Rules:
+          - Id: Rule for logs
+            Prefix: logs
+            Status: Enabled
+            ExpirationInDays: 365
+      VersioningConfiguration:
+        Status: Enabled
+
+  SNSTopic: 
+    Type: AWS::SNS::Topic
+    Properties: 
+      Subscription: 
+        - Endpoint: !Ref EmailForEventRule
+          Protocol: "email"
+      TopicName: EventRuleSNSTopic
+  
+  EC2EventRule:
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: Event Rule For EC2 instance state change
+      Name: Ec2EventRule
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Instance State-change Notification
+        detail:
+          instance-id:
+            - !Ref EC2Instance
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: !Ref SNSTopic
+          Id: EventRuleSNSTopic
+
+  EventTopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sns:Publish'
+            Resource: '*'
+      Topics:
+        - !Ref SNSTopic
