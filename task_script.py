@@ -64,7 +64,7 @@ def _stack_exists(stackName):
 def _parse_template(template):
     with open(template) as template_file:
         template_data = template_file.read()
-    cf.validate_template(TemplateBody=template_data)
+    cfn_client.validate_template(TemplateBody=template_data)
     return template_data
 
 create_or_update(*sys.argv[3:])
