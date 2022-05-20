@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Git Clone') {
             steps {
-                sh 'rm -r cloudformation-using-jenkins'
+                sh 'rm -rf cloudformation-using-jenkins'
                 sh 'git clone https://github.com/NikhilSri700/cloudformation-using-jenkins.git'
             }
         }
