@@ -2,8 +2,10 @@ pipeline {
     agent any
     stages {
         stage('Git Clone') {
-            sh 'rm -r cloudformation-using-jenkins'
-            sh 'git clone https://github.com/NikhilSri700/cloudformation-using-jenkins.git'
+            steps {
+                sh 'rm -r cloudformation-using-jenkins'
+                sh 'git clone https://github.com/NikhilSri700/cloudformation-using-jenkins.git'
+            }
         }
         stage('Build') {
             steps {
